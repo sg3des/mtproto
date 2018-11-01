@@ -335,8 +335,8 @@ func NewMessageMedia(input TL) IMessageMedia {
 // Functions
 // All the method call are in the following section.
 
-func (m *MTProto) Messages_SendMessage(text string, inputPeer TL, reply_to int32) error {
-	_, err := m.send(TL_messages_sendMessage{
+func (m *MTProto) Messages_SendMessage(text string, inputPeer TL, reply_to int32) (id int32, err error) {
+	resp, err := m.send(TL_messages_sendMessage{
 		0,
 		inputPeer,
 		reply_to,
@@ -345,7 +345,19 @@ func (m *MTProto) Messages_SendMessage(text string, inputPeer TL, reply_to int32
 		TL_null{},
 		nil,
 	})
-	return err
+	if err != nil {
+		return 0, err
+	}
+
+	for _, u := range resp.(TL_updates).Updates {
+		switch u.(type) {
+		case TL_updateMessageID:
+			id = u.(TL_updateMessageID).Id
+		}
+	}
+
+	// log.Printf("%#v", resp)
+	return id, err
 }
 
 func (m *MTProto) Messages_ImportChatInvite(hash string) *Chat {

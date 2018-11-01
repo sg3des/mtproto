@@ -16,6 +16,8 @@ func (m *MTProto) Auth_SendCode(phonenumber string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	log.Printf("%+v", resp)
+
 	return resp.(TL_auth_sentCode).Phone_code_hash, nil
 }
 

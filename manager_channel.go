@@ -227,6 +227,44 @@ func NewChannel(input TL) *Channel {
 	return channel
 }
 
+// func (m *MTProto) ChannelParticipantsSearch(channel TL_inputChannel, user TL_inputUser) (TL_channels_channelParticipant, error) {
+// 	resp, err := m.send(TL_channels_getParticipant{
+// 		Channel: channel,
+// 		User_id: user,
+// 	})
+// 	if err != nil {
+// 		return TL_channels_channelParticipant{}, err
+// 	}
+
+// 	return resp.(TL_channels_channelParticipant), nil
+// }
+
+func (m *MTProto) Channels_GetParticipant(channel TL_inputChannel, user TL_inputUser) (TL_channels_channelParticipant, error) {
+	resp, err := m.send(TL_channels_getParticipant{
+		Channel: channel,
+		User_id: user,
+	})
+	if err != nil {
+		return TL_channels_channelParticipant{}, err
+	}
+
+	return resp.(TL_channels_channelParticipant), nil
+}
+
+func (m *MTProto) Channels_GetParticipantsFilter(channel TL, filter TL, offset, limit int32) (TL_channels_channelParticipants, error) {
+	resp, err := m.send(TL_channels_getParticipants{
+		Channel: channel,
+		Filter:  filter,
+		Offset:  offset,
+		Limit:   limit,
+	})
+	if err != nil {
+		return TL_channels_channelParticipants{}, err
+	}
+
+	return resp.(TL_channels_channelParticipants), nil
+}
+
 func (m *MTProto) Channels_GetParticipants(channel TL, offset, limit int32) []User {
 	resp := make(chan TL, 1)
 	m.queueSend <- packetToSend{
@@ -253,6 +291,32 @@ func (m *MTProto) Channels_GetParticipants(channel TL, offset, limit int32) []Us
 	return users
 }
 
+// func (m *MTProto) Channels_GetParticipants(channel TL, offset, limit int32) []User {
+// 	resp := make(chan TL, 1)
+// 	m.queueSend <- packetToSend{
+// 		TL_channels_getParticipants{
+// 			Channel: channel,
+// 			Filter:  TL_channelParticipantsRecent{},
+// 			Offset:  offset,
+// 			Limit:   limit,
+// 		},
+// 		resp,
+// 	}
+// 	x := <-resp
+// 	users := make([]User, 0)
+// 	switch input := x.(type) {
+// 	case TL_channels_channelParticipants:
+// 		for _, u := range input.Users {
+// 			users = append(users, *NewUser(u))
+// 		}
+// 	case TL_rpc_error:
+// 		fmt.Println(input.error_code, input.error_message)
+// 	default:
+// 		fmt.Println(reflect.TypeOf(input).String())
+// 	}
+// 	return users
+// }
+
 func (m *MTProto) Channels_GetChannels(in []TL) []Channel {
 	resp := make(chan TL, 1)
 	m.queueSend <- packetToSend{
@@ -278,29 +342,43 @@ func (m *MTProto) Channels_GetChannels(in []TL) []Channel {
 	}
 }
 
-func (m *MTProto) Channels_GetFullChannel(channelID int32, accessHash int64) *Channel {
-	resp := make(chan TL, 1)
-	m.queueSend <- packetToSend{
-		TL_channels_getFullChannel{
-			Channel: TL_inputChannel{
-				Channel_id:  channelID,
-				Access_hash: accessHash,
-			},
+func (m *MTProto) Channels_GetFullChannel(channelID int32, accessHash int64) (ch TL_messages_chatFull, err error) {
+	resp, err := m.send(TL_channels_getFullChannel{
+		Channel: TL_inputChannel{
+			Channel_id:  channelID,
+			Access_hash: accessHash,
 		},
-		resp,
+	})
+	if err != nil {
+		return ch, err
 	}
-	x := <-resp
-	channel := new(Channel)
-	switch input := x.(type) {
-	case TL_messages_chatFull:
-		channel = NewChannel(input.Chats[0])
-	case TL_rpc_error:
-		fmt.Println("MTProto::Channels_GetFullChannel::", input.error_message, input.error_code)
-	default:
-		return nil
-	}
-	return channel
+
+	return resp.(TL_messages_chatFull), nil
 }
+
+// func (m *MTProto) Channels_GetFullChannel(channelID int32, accessHash int64) *Channel {
+// 	resp := make(chan TL, 1)
+// 	m.queueSend <- packetToSend{
+// 		TL_channels_getFullChannel{
+// 			Channel: TL_inputChannel{
+// 				Channel_id:  channelID,
+// 				Access_hash: accessHash,
+// 			},
+// 		},
+// 		resp,
+// 	}
+// 	x := <-resp
+// 	channel := new(Channel)
+// 	switch input := x.(type) {
+// 	case TL_messages_chatFull:
+// 		channel = NewChannel(input.Chats[0])
+// 	case TL_rpc_error:
+// 		fmt.Println("MTProto::Channels_GetFullChannel::", input.error_message, input.error_code)
+// 	default:
+// 		return nil
+// 	}
+// 	return channel
+// }
 
 func (m *MTProto) Channels_JoinChannel(channelID int32, accessHash int64) error {
 	_, err := m.send(TL_channels_joinChannel{
