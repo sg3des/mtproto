@@ -61,9 +61,9 @@ func NewMTProto(appId int32, appHash, authkeyfile, dcAddress string, debug int32
 	var err error
 	m := new(MTProto)
 	__debug = debug
-	if dcAddress == "" {
-		dcAddress = "149.154.167.91:443"
-	}
+	// if dcAddress == "" {
+	// 	dcAddress = "149.154.167.91:443"
+	// }
 
 	m.appId = appId
 	m.appHash = appHash
@@ -146,9 +146,9 @@ func (m *MTProto) Connect() error {
 			layer,
 			TL_initConnection{
 				int32(m.appId),
-				"NESTED",
+				"initial",
 				runtime.GOOS + "/" + runtime.GOARCH,
-				"1.0.0",
+				"1.1.1",
 				"en",
 				"",
 				"en",
@@ -273,7 +273,9 @@ func (m *MTProto) readRoutine() {
 		data, err := m.read(m.stopRead)
 		if err != nil {
 			fmt.Println("ReadRoutine:", err)
-			os.Exit(2)
+			// os.Exit(2)
+			m.allDone <- struct{}{}
+			return
 		}
 		if data == nil {
 			m.allDone <- struct{}{}

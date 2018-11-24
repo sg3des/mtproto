@@ -1,6 +1,7 @@
 package mtproto
 
 import (
+	"errors"
 	"fmt"
 	"log"
 )
@@ -16,7 +17,7 @@ func (m *MTProto) Auth_SendCode(phonenumber string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	log.Printf("%+v", resp)
+	// log.Printf("%+v", resp)
 
 	return resp.(TL_auth_sentCode).Phone_code_hash, nil
 }
@@ -38,8 +39,8 @@ func (m *MTProto) Auth_SignUp(phonenumber, hash, code, fname, lname string) (TL_
 		return TL_auth_authorization{}, fmt.Errorf("RPC: %#v", resp)
 	}
 
-	userSelf := auth.User.(TL_user)
-	log.Printf("Signed in: id %d name <%s %s>\n", userSelf.Id, userSelf.First_name, userSelf.Last_name)
+	// userSelf := auth.User.(TL_user)
+	// log.Printf("Signed in: id %d name <%s %s>\n", userSelf.Id, userSelf.First_name, userSelf.Last_name)
 	return auth, nil
 }
 
@@ -54,8 +55,8 @@ func (m *MTProto) Auth_SignIn(phonenumber string, hash, code string) (TL_auth_au
 	if !ok {
 		return TL_auth_authorization{}, fmt.Errorf("RPC: %#v", x)
 	}
-	userSelf := auth.User.(TL_user)
-	log.Printf("Signed in: id %d name <%s %s>\n", userSelf.Id, userSelf.First_name, userSelf.Last_name)
+	// userSelf := auth.User.(TL_user)
+	// log.Printf("Signed in: id %d name <%s %s>\n", userSelf.Id, userSelf.First_name, userSelf.Last_name)
 	return auth, nil
 }
 
@@ -76,24 +77,20 @@ func (m *MTProto) Auth_CheckPhone(phonenumber string) bool {
 	return false
 }
 
-func (m *MTProto) Users_GetFullSelf() (User, error) {
+func (m *MTProto) Users_GetFullSelf() (*User, error) {
 	return m.users_getFullUsers(TL_inputUserSelf{})
 }
 
-func (m *MTProto) users_getFullUsers(id TL) (User, error) {
-	resp := make(chan TL, 1)
-	m.queueSend <- packetToSend{
-		TL_users_getFullUser{
-			Id: id,
-		},
-		resp,
+func (m *MTProto) users_getFullUsers(id TL) (*User, error) {
+	resp, err := m.send(TL_users_getFullUser{Id: id})
+	if err != nil {
+		return nil, err
 	}
-	x := <-resp
-	user, ok := x.(TL_userFull)
+	user, ok := resp.(TL_userFull)
 	if !ok {
-		log.Println(fmt.Sprintf("RPC: %#v", x))
-		return User{}, fmt.Errorf("RPC: %#v", x)
+		log.Printf("%#v", resp)
+		return nil, errors.New("unexpected response")
 	}
-	newUser := NewUser(user.User)
-	return *newUser, nil
+
+	return NewUser(user.User), nil
 }
